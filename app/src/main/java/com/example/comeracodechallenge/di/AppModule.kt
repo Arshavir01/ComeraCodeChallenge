@@ -12,6 +12,6 @@ val appModule = module{
     }
 
     single {
-        MediaRepository(appContext = get())
+        MediaRepository(context =  get())
     }
 }

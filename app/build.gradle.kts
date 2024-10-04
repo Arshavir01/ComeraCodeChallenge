@@ -53,6 +53,12 @@ dependencies {
     //Koin
     implementation (libs.koin.android)
 
+    //FFMpeg
+    implementation (libs.ffmpeg.kit.full)
+
+    //Coil
+    implementation(libs.coil.compose)
+
 
 
 
