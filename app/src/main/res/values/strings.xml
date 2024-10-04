@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">ComeraCodeChallenge</string>
+    <string name="folders">Folders</string>
+    <string name="photos">Photos</string>
+    <string name="videos">Videos</string>
+    <string name="all">All</string>
+    <string name="no_media">No Media</string>
 </resources>
