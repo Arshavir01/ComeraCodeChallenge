@@ -3,247 +3,315 @@ package com.example.comeracodechallenge.model.repository
 import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
+import android.database.MergeCursor
 import android.net.Uri
 import android.os.Build
 import android.provider.BaseColumns
 import android.provider.MediaStore
 import androidx.annotation.ChecksSdkIntAtLeast
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegKitConfig
+import com.example.comeracodechallenge.model.entities.Folder
 import com.example.comeracodechallenge.model.entities.LocalMedia
-import com.example.comeracodechallenge.model.entities.VideoThumbnail
+import com.example.comeracodechallenge.utils.AppConstants.ALL_TITLE
+import com.example.comeracodechallenge.utils.AppConstants.FAVORITE_ID
+import com.example.comeracodechallenge.utils.AppConstants.FAVORITE_TITLE
+import com.example.comeracodechallenge.utils.AppConstants.FOLDER_ID_ALL
 import com.example.comeracodechallenge.utils.MediaType
 import com.example.comeracodechallenge.utils.Status
-import kotlinx.coroutines.CoroutineScope
+import com.example.comeracodechallenge.utils.UtilMethods
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import okhttp3.internal.closeQuietly
 
 class MediaRepository(private val context: Context) {
-    private val _mediaFlow: MutableStateFlow<List<LocalMedia>> = MutableStateFlow(emptyList())
-    val mediaFlow: StateFlow<List<LocalMedia>> = _mediaFlow
+    private val mediaList = mutableListOf<LocalMedia>()
+    private var mediaFolders: MutableList<Folder>? = null
 
-    private val _videoThumbnailFlow: MutableSharedFlow<VideoThumbnail?> = MutableSharedFlow(1)
-    val videoThumbnailFlow: SharedFlow<VideoThumbnail?> = _videoThumbnailFlow
+    private val _loadingStatus: MutableStateFlow<Status> = MutableStateFlow(Status.Unknown)
+    val loadingStatus: SharedFlow<Status> = _loadingStatus
 
-    private val _loadingMediaFiles: MutableStateFlow<Status> = MutableStateFlow(Status.Unknown)
-    val loadingMediaFiles: StateFlow<Status> = _loadingMediaFiles
+    private val mutex = Mutex(false)
 
-    suspend fun getAllMediaFilesOnDevice() =
+    private suspend fun getAllMedia(): List<LocalMedia> =
         withContext(Dispatchers.IO) {
             val storageMediaList: MutableList<LocalMedia> = ArrayList()
 
-            try {
-                _loadingMediaFiles.emit(Status.Loading)
-                val columns = chooseColumns(isOSGreaterThen10())
+            mutex.withLock {
+                if (mediaList.isNotEmpty()) {
+                    return@withContext mediaList.distinctBy { it.id }
+                }
 
-                val cursorImages = context.contentResolver.query(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    columns,
-                    null,
-                    null,
-                    MediaStore.Images.Media.DATE_ADDED
-                )
+                try {
+                    _loadingStatus.emit(Status.Loading)
+                    val columns = getColumns()
 
-                val cursorVideos = context.contentResolver.query(
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                    columns,
-                    null,
-                    null,
-                    MediaStore.Images.Media.DATE_ADDED
-                )
+                    val cursorImages =
+                        context.contentResolver.query(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            columns,
+                            null,
+                            null,
+                            MediaStore.Images.Media.DATE_ADDED,
+                        )
 
+                    val cursorVideos =
+                        context.contentResolver.query(
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                            columns,
+                            null,
+                            null,
+                            MediaStore.Video.Media.DATE_ADDED,
+                        )
 
+                    val mergeCursor =
+                        MergeCursor(
+                            arrayOf(
+                                cursorImages,
+                                cursorVideos,
+                            ),
+                        )
 
-                cursorImages?.moveToLast()
-                cursorVideos?.moveToLast()
+                    mergeCursor.moveToLast()
+                    val mediaList = getDataFromCursor(mergeCursor)
+                    mergeCursor.closeQuietly()
 
-                getDataFromCursor(cursorImages!!, storageMediaList, MediaType.Image, context)
-                getDataFromCursor(cursorVideos!!, storageMediaList, MediaType.Video, context)
+                    storageMediaList.addAll(mediaList)
 
-            } catch (e: Exception) {
-                _loadingMediaFiles.emit(Status.Failur)
-            }
-        }
-
-    private suspend fun getDataFromCursor(
-        cursor: Cursor,
-        storageMediaList: MutableList<LocalMedia>,
-        mediaType: MediaType,
-        context: Context
-    ) = withContext(Dispatchers.IO) {
-        while (!cursor.isBeforeFirst) {
-            var path: String
-            var id: Long
-            var folderName: String
-
-            val pathColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
-            val idColumnIndex = cursor.getColumnIndex(BaseColumns._ID)
-            val folderNameColumnIndex =
-                cursor.getColumnIndex(MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
-
-            if (pathColumnIndex != -1) {
-                path = cursor.getString(pathColumnIndex)
-            } else {
-                continue
-            }
-
-            if (idColumnIndex != -1) {
-                id = cursor.getLong(idColumnIndex)
-            } else {
-                continue
-            }
-
-            if (folderNameColumnIndex != -1) {
-                folderName = cursor.getString(folderNameColumnIndex)
-            } else {
-                continue
-            }
-
-            val mediaUri = getMediaUri(mediaType, id)
-            val mediaName = path.substring(path.lastIndexOf("/") + 1)
-            val mediaSize = (File(path).length() / 1024).toInt()
-            val isFavorite = getFavorite(cursor, isOSGreaterThen10())
-            val duration = getDuration(cursor, isOSGreaterThen10())
-
-            storageMediaList.add(
-                LocalMedia(
-                    id = id,
-                    uri = mediaUri,
-                    name = mediaName,
-                    duration = duration,
-                    size = mediaSize,
-                    folderName = folderName,
-                    mediaType = mediaType,
-                    isFavorite = isFavorite,
-                    path = path,
-                    videoThumbnail = ""
-                )
-            )
-            cursor.moveToPrevious()
-        }
-
-        _loadingMediaFiles.emit(Status.Success)
-        _mediaFlow.emit(storageMediaList)
-
-        storageMediaList
-            .filter { it.mediaType == MediaType.Video && it.uri != null }
-            .map {
-                CoroutineScope(Dispatchers.Default).launch  {
-                    generateThumbnail(it.id, it.uri!!, mediaType, context)
+                    this@MediaRepository.mediaList.addAll(
+                        storageMediaList.distinctBy { it.id }.sortedByDescending { it.dateAdded },
+                    )
+                    _loadingStatus.emit(Status.Success)
+                } catch (e: Exception) {
+                    _loadingStatus.emit(Status.Error(e.message ?: "Error"))
                 }
             }
 
-    }
-
-    private fun getMediaUri(mediaType: MediaType, id: Long): Uri {
-        if (mediaType == MediaType.Video) {
-            return ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-        } else {
-            return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+            return@withContext mediaList.distinctBy { it.id }
         }
-    }
 
-    private fun getFavorite(cursor: Cursor, isOsGreaterThen10: Boolean): Boolean {
-        var isFavorite = false
-        if (isOsGreaterThen10) {
-            val favoriteColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.IS_FAVORITE)
-
-            if (favoriteColumnIndex != -1) {
-                val favoriteStr =
-                    cursor.getString(favoriteColumnIndex)
-                isFavorite = favoriteStr == "1"
+    private fun getColumns(): Array<String> {
+        val list =
+            buildList {
+                add(BaseColumns._ID)
+                add(MediaStore.MediaColumns.DATA)
+                add(MediaStore.MediaColumns.DATE_ADDED)
+                add(MediaStore.MediaColumns.BUCKET_ID)
+                add(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+                add(MediaStore.MediaColumns.DISPLAY_NAME)
+                add(MediaStore.MediaColumns.SIZE)
+                add(MediaStore.MediaColumns.MIME_TYPE)
+                add(MediaStore.MediaColumns.DATE_ADDED)
+                if (isSdkAtLeastR()) {
+                    add(MediaStore.MediaColumns.IS_FAVORITE)
+                    add(MediaStore.MediaColumns.DURATION)
+                }
             }
-        }
-        return isFavorite
-    }
-
-    private fun getDuration(cursor: Cursor, isOsGreaterThen10: Boolean): Int? {
-        val duration: Int?
-        if (isOsGreaterThen10) {
-            val durationColumnIndex = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
-            if (durationColumnIndex != -1) {
-                duration = cursor.getInt(durationColumnIndex)
-            } else {
-                duration = null
-            }
-        } else {
-            duration = null
-        }
-        return duration
-    }
-
-    private fun chooseColumns(isOsGreaterThen10: Boolean): Array<String> {
-        if (isOsGreaterThen10) {
-            val columns = arrayOf(
-                BaseColumns._ID,
-                MediaStore.Images.Media.DATA,
-                MediaStore.Images.Media.DATE_ADDED,
-                MediaStore.Images.Media.BUCKET_ID,
-                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
-                MediaStore.Images.Media.IS_FAVORITE,
-                MediaStore.Video.Media.DURATION,
-                MediaStore.Images.Media.DATE_MODIFIED
-            )
-            return columns
-        } else {
-            val columns = arrayOf(
-                BaseColumns._ID,
-                MediaStore.Images.Media.DATA,
-                MediaStore.Images.Media.DATE_ADDED,
-                MediaStore.Images.Media.BUCKET_ID,
-                MediaStore.Images.Media.BUCKET_DISPLAY_NAME,
-                MediaStore.Images.Media.DATE_MODIFIED
-            )
-            return columns
-        }
+        return list.toTypedArray()
     }
 
     @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)
-    private fun isOSGreaterThen10(): Boolean {
+    private fun isSdkAtLeastR(): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }
 
-    private suspend fun generateThumbnail(
-        id: Long,
-        uri: Uri,
-        mediaType: MediaType,
-        context: Context
-    ) = withContext(Dispatchers.Default) {
-        if (mediaType == MediaType.Video) {
-            val inputPath = FFmpegKitConfig.getSafParameterForRead(context, uri)
-            val parentDir = context.cacheDir.path + "/" + "thumbnails/"
-            val parentDirFile = File(parentDir)
-            if (!parentDirFile.exists()) {
-                parentDirFile.mkdirs()
+    private suspend fun getDataFromCursor(
+        cursor: Cursor,
+    ): List<LocalMedia> =
+        withContext(Dispatchers.IO) {
+            val storageMediaList: MutableList<LocalMedia> = ArrayList()
+            val pathColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+            val idColumnIndex = cursor.getColumnIndex(BaseColumns._ID)
+            val folderNameColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
+            val fileNameColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+            val fileSizeColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            var favoriteColumnIndex = -1
+            var durationColumnIndex = -1
+            if (isSdkAtLeastR()) {
+                favoriteColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
+                durationColumnIndex = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
             }
-            val outputPath = parentDir + "video_thumb_${id}.jpg"
-            val outputPathFile = File(outputPath)
+            val mimeTypeColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE)
+            val dateAddedColumnIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_ADDED)
 
-            if (outputPathFile.exists()) {
-                val videoThumbnail = VideoThumbnail(id, outputPath)
-                _videoThumbnailFlow.emit(videoThumbnail)
-                return@withContext
+            while (!cursor.isBeforeFirst) {
+                if (
+                    pathColumnIndex == -1 ||
+                    idColumnIndex == -1 ||
+                    folderNameColumnIndex == -1 ||
+                    fileNameColumnIndex == -1 ||
+                    fileSizeColumnIndex == -1 ||
+                    mimeTypeColumnIndex == -1
+                ) {
+                    cursor.moveToPrevious()
+                    continue
+                }
+
+                val path = cursor.getString(pathColumnIndex)
+                val id: Long = cursor.getLong(idColumnIndex)
+                val folderName: String = cursor.getString(folderNameColumnIndex)
+                val mediaName = cursor.getString(fileNameColumnIndex)
+                val mediaSize = cursor.getInt(fileSizeColumnIndex)
+                var isFavorite = false
+                if (favoriteColumnIndex != -1) {
+                    isFavorite = isFavorite(cursor, favoriteColumnIndex)
+                }
+                var duration: Int? = null
+                if (durationColumnIndex != -1) {
+                    duration = getDuration(cursor, durationColumnIndex)
+                }
+                val dateAdded = cursor.getLong(dateAddedColumnIndex)
+
+                val mediaType =
+                    if (UtilMethods.isVideoFile(path)) {
+                        MediaType.Video
+                    } else if (UtilMethods.isImageFile(path)) {
+                        MediaType.Image
+                    } else {
+                        cursor.moveToPrevious()
+                        continue
+                    }
+
+                val mediaUri = getMediaUriFromId(mediaType, id, path)
+
+                storageMediaList.add(
+                    LocalMedia(
+                        id = id,
+                        uri = mediaUri,
+                        name = mediaName,
+                        duration = duration,
+                        size = mediaSize,
+                        folderName = folderName,
+                        mediaType = mediaType,
+                        hasFavorite = isFavorite,
+                        path = path,
+                        dateAdded = dateAdded,
+                        videoThumbnail = ""
+                    ),
+                )
+                cursor.moveToPrevious()
             }
 
-            val command = "-i $inputPath -vframes 1 -vf scale=210:-1 $outputPath"
-            val session = FFmpegKit.execute(command)
-            val duration = session.duration.toDuration(DurationUnit.MILLISECONDS)
+            return@withContext storageMediaList
+        }
 
-            val videoThumbnail = VideoThumbnail(id, outputPath)
-            _videoThumbnailFlow.emit(videoThumbnail)
-
-        } else {
-            return@withContext
+    private fun getMediaUriFromId(mediaType: MediaType, id: Long, path: String): Uri {
+        return when (mediaType) {
+            MediaType.Video -> {
+                ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+            }
+            MediaType.Image -> {
+                ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+            }
         }
     }
 
+    private fun isFavorite(
+        cursor: Cursor,
+        columnIndex: Int,
+    ): Boolean {
+        return cursor.getInt(columnIndex) == 1
+    }
+
+    private fun getDuration(
+        cursor: Cursor,
+        columnIndex: Int,
+    ): Int {
+        return cursor.getInt(columnIndex)
+    }
+
+    suspend fun getAllFolders() {
+        val mList = getAllMedia()
+
+        val foldersNames = mList.map { it.folderName }.distinct()
+
+        val listFolderData: MutableList<Folder> = ArrayList()
+        val firstFolder = createFirstFolder(mList)
+        val favoriteFolder = createFavoriteFolder(mList)
+        if (firstFolder != null) {
+            listFolderData.add(firstFolder)
+        }
+        if (favoriteFolder != null) {
+            listFolderData.add(favoriteFolder)
+        }
+
+        for (i in foldersNames.indices) {
+            var folderItemCount = 0
+            val newList: MutableList<LocalMedia> = ArrayList()
+
+            for (j in 0 until mList.size) {
+                if (mList[j].folderName == foldersNames[i]) {
+                    folderItemCount++
+                    newList.add(mList[j])
+                }
+            }
+
+            val item = Folder(i, foldersNames[i], folderItemCount, newList)
+            listFolderData.add(item)
+        }
+
+        if (mediaFolders == null) {
+            mediaFolders = mutableListOf()
+            mediaFolders!!.addAll(listFolderData)
+        }
+    }
+
+    fun getAllMediaFromFolders(): List<LocalMedia> {
+        val allMedia = mediaFolders?.flatMap { it.folderItemList }
+        return allMedia?.distinct() ?: emptyList()
+    }
+
+    private fun createFirstFolder(mList: List<LocalMedia>): Folder? {
+        return if (mList.isNotEmpty()) {
+            Folder(FOLDER_ID_ALL, ALL_TITLE, mList.size, mList)
+        } else {
+            null
+        }
+    }
+
+    private fun createFavoriteFolder(mList: List<LocalMedia>): Folder? {
+        val favorite = mList.filter { it.hasFavorite }
+
+        if (favorite.isNotEmpty()) {
+            return Folder(
+                FAVORITE_ID,
+                FAVORITE_TITLE,
+                favorite.size,
+                favorite,
+            )
+        } else {
+            return null
+        }
+    }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

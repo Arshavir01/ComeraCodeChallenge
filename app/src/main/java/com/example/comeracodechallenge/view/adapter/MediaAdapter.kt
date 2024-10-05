@@ -9,12 +9,11 @@ import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
+import com.bumptech.glide.Glide
 import com.example.comeracodechallenge.databinding.ListItemLocalMediaBinding
 import com.example.comeracodechallenge.model.entities.LocalMedia
 import com.example.comeracodechallenge.utils.MediaType
-import com.example.comeracodechallenge.utils.MediaUtils
-import com.example.comeracodechallenge.utils.MediaUtils.dpAsPx
+import com.example.comeracodechallenge.utils.UtilMethods
 import kotlin.math.roundToInt
 
 class MediaAdapter : ListAdapter<LocalMedia, MediaAdapter.MediaViewHolder>(MediaListItemDiffer()) {
@@ -41,13 +40,17 @@ class MediaAdapter : ListAdapter<LocalMedia, MediaAdapter.MediaViewHolder>(Media
             holder.binding.videoDuration.isVisible = hasDuration
 
             if (hasDuration) {
-                 val duration = MediaUtils.convertSecondsToHour(item.duration!!.toInt())
+                 val duration = UtilMethods.convertSecondsToHour(item.duration!!.toInt())
                 holder.binding.durationTextView.text = duration
             }
         } else {
             holder.binding.videoDuration.isVisible = false
         }
-        holder.binding.photo.load(item.uri)
+
+        Glide.with(holder.itemView.context)
+            .load(item.uri)
+            .into(holder.binding.photo)
+
     }
 
     private fun computeScreenSize(): Int {

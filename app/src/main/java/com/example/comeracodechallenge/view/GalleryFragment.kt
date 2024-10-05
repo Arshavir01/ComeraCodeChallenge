@@ -3,6 +3,7 @@ package com.example.comeracodechallenge.view
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,7 +14,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.example.comeracodechallenge.databinding.FragmentGalleryBinding
+import com.example.comeracodechallenge.utils.UtilMethods.hasMediaPermission
 import com.example.comeracodechallenge.view.adapter.MediaAdapter
 import com.example.comeracodechallenge.viewmodel.MediaViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -24,6 +28,7 @@ class GalleryFragment: Fragment() {
     private lateinit var binding: FragmentGalleryBinding
     private lateinit var mediaAdapter: MediaAdapter
     private val viewModel by viewModel<MediaViewModel>()
+    private var isFirstLoad = true
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,16 +41,22 @@ class GalleryFragment: Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requestForImageVideoPermissions()
+        checkMediaPermission()
         setMediaRecyclerView()
+        bindView()
     }
 
     private fun bindView(){
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED){
-                viewModel.viewState.collectLatest { list ->
+                viewModel.viewState.collectLatest { viewState ->
+                    val list = viewState.media
                     if (list.isNotEmpty()){
                         mediaAdapter.submitList(list)
+                        if (isFirstLoad) {
+                            isFirstLoad = false
+                            initScrollListener()
+                        }
                     }
                 }
             }
@@ -57,6 +68,46 @@ class GalleryFragment: Fragment() {
         val layoutManager = GridLayoutManager(requireContext(), 3)
         binding.mediaListRv.layoutManager = layoutManager
         binding.mediaListRv.adapter = mediaAdapter
+    }
+
+    private fun checkMediaPermission() {
+        if (hasMediaPermission(requireContext())) {
+            viewModel.onPermissionGranted()
+        } else {
+            requestForImageVideoPermissions()
+            //put here text permission denied
+        }
+    }
+
+    private fun initScrollListener() {
+        binding.mediaListRv.clearOnScrollListeners()
+
+        binding.mediaListRv.addOnScrollListener(
+            object : OnScrollListener() {
+                var firstItemPosition = -1
+                var lastItemPosition = -1
+                val linearLayoutManager = binding.mediaListRv.layoutManager as LinearLayoutManager?
+
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+                    if (linearLayoutManager != null) {
+                        firstItemPosition = linearLayoutManager.findFirstVisibleItemPosition()
+                        lastItemPosition = linearLayoutManager.findLastVisibleItemPosition()
+
+                        if (dy == 0 && lastItemPosition != -1) {
+                            viewModel.generateFirstPartOfVideoThumbs(lastItemPosition, requireContext())
+                        }
+                    }
+                }
+
+                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                    val isScrollingStopped = newState == RecyclerView.SCROLL_STATE_IDLE
+                    if (isScrollingStopped && firstItemPosition != -1 && lastItemPosition != -1) {
+                        viewModel.onScrollPositionChanged(firstItemPosition, lastItemPosition, requireContext())
+                    }
+                }
+            },
+        )
     }
 
 
@@ -80,7 +131,7 @@ class GalleryFragment: Fragment() {
             ActivityResultContracts.RequestPermission(),
         ) { isGranted: Boolean ->
             if (isGranted){
-                bindView()
+                viewModel.onPermissionGranted()
             }
         }
 
@@ -88,9 +139,8 @@ class GalleryFragment: Fragment() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val isGranted = permissions.values.all { it }
             if (isGranted){
-                bindView()
+                viewModel.onPermissionGranted()
             }
         }
-
 
 }

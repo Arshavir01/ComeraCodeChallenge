@@ -12,7 +12,6 @@ data class LocalMedia(
     val size: Int,
     val folderName: String = "",
     val mediaType: MediaType,
-    val isFavorite: Boolean,
     val hasFavorite: Boolean = false,
     val dateAdded: Long = 0,
     val path: String = "",

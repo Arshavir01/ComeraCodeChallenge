@@ -44,7 +44,7 @@
             android:id="@+id/durationTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/white"
+            android:textColor="@color/black"
             android:textSize="8sp"
             tools:text="00:15" />
     </LinearLayout>

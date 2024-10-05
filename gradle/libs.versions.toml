@@ -2,9 +2,7 @@
 agp = "8.5.0"
 coilCompose = "2.6.0"
 ffmpegKitFull = "5.1"
-hiltAndroid = "2.49"
-hiltCompiler = "1.2.0"
-hiltLifecycleViewmodel = "1.0.0-alpha03"
+glideVersion = "4.16.0"
 koinAndroid = "3.5.3"
 kotlin = "1.9.0"
 coreKtx = "1.13.1"
@@ -20,6 +18,7 @@ constraintlayout = "2.1.4"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 ffmpeg-kit-full = { module = "com.arthenica:ffmpeg-kit-full", version.ref = "ffmpegKitFull" }
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glideVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

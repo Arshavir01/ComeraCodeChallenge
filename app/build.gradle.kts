@@ -59,7 +59,7 @@ dependencies {
     //Coil
     implementation(libs.coil.compose)
 
-
-
-
+    //Glide
+    val glideVersion = "4.16.0"
+    implementation (libs.glide)
 }
