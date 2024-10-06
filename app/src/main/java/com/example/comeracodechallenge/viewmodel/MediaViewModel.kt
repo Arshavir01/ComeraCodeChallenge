@@ -2,13 +2,14 @@ package com.example.comeracodechallenge.viewmodel
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
+import com.example.comeracodechallenge.model.entities.Folder
 import com.example.comeracodechallenge.model.entities.LocalMedia
 import com.example.comeracodechallenge.model.repository.MediaRepository
+import com.example.comeracodechallenge.utils.AppConstants.NO_FOLDER_ID
 import com.example.comeracodechallenge.utils.AppConstants.NO_ID
 import com.example.comeracodechallenge.utils.Filter
 import com.example.comeracodechallenge.utils.MediaType
@@ -38,6 +39,7 @@ class MediaViewModel(
     private val permissionGranted = MutableStateFlow(false)
     private val mediaFlow = MutableStateFlow<List<LocalMedia>>(emptyList())
     private val currentFilter = MutableStateFlow(Filter.All)
+    private val currentFolderId = MutableStateFlow(NO_FOLDER_ID)
     private val thumbGenerationQueue = ArrayDeque<LocalMedia>()
     private var thumbnailGenerationJob: Job? = null
 
@@ -51,7 +53,8 @@ class MediaViewModel(
                     currentFilter
                 ) { media, status, filter ->
                     setAlreadyGeneratedThumbs(context, media)
-                    return@combine ViewState(media, status, filter)
+                    val filterMediaList = filterMediaList(media, filter)
+                    return@combine ViewState(filterMediaList, status, filter)
                 }
             }
 
@@ -109,6 +112,24 @@ class MediaViewModel(
         return context.cacheDir.path + "/" + "thumbnails/"
     }
 
+    fun getAllFolderWithData(): List<Folder> {
+        return repo.getAllMediaWithFolders()
+    }
+
+    fun updateMediaListFromFolder(folderId: Int) {
+        viewModelScope.launch {
+            val list = repo.getMediaForFolderId(folderId)
+            currentFolderId.emit(folderId)
+            mediaFlow.emit(list)
+        }
+    }
+
+    fun getFolderNameFromId(): String {
+        val allFolders = repo.getAllMediaWithFolders()
+        val folder = allFolders.firstOrNull{ it.id == currentFolderId.value }
+        return folder?.name ?: "All"
+    }
+
     fun onScrollPositionChanged(firstVisiblePos: Int, lastVisiblePos: Int, context: Context) {
         val newList = filterMediaList(mediaFlow.value, currentFilter.value)
         for (i in lastVisiblePos downTo firstVisiblePos) {
@@ -139,6 +160,7 @@ class MediaViewModel(
                 Filter.All -> list
                 Filter.Video -> filterVideos(list)
                 Filter.Photo -> filterPhotos(list)
+                Filter.Folder -> list
             }
         return filteredList
     }
@@ -157,7 +179,6 @@ class MediaViewModel(
         uri: Uri,
     ): String =
         withContext(Dispatchers.IO) {
-            val inputPath = FFmpegKitConfig.getSafParameterForRead(context, uri)
             val parentDir = getParentDir(context)
             val parentDirFile = File(parentDir)
 
@@ -167,16 +188,9 @@ class MediaViewModel(
             val outputPath = getOutputPathFromId(id, context)
             val outputPathFile = File(outputPath)
 
-            Log.d("TAG_MediaViewModel", "generateThumbnail: $outputPath")
-
             if (outputPathFile.exists()) {
                 return@withContext outputPath
             }
-
-            val command =
-                "-i $inputPath -vf scale=210:210:'force_original_aspect_ratio=decrease' -vframes 1 $outputPath"
-            val session = FFmpegKit.execute(command)
-            val duration = session.duration.toDuration(DurationUnit.MILLISECONDS)
 
             return@withContext outputPath
         }

@@ -3,5 +3,6 @@ package com.example.comeracodechallenge.utils
 enum class Filter {
     All,
     Video,
-    Photo
+    Photo,
+    Folder
 }

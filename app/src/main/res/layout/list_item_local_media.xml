@@ -10,9 +10,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        android:layout_marginBottom="12dp"
-        app:cardCornerRadius="4dp"
-        app:cardElevation="0dp"
+        android:layout_marginBottom="@dimen/list_item_local_media_bottom_margin"
+        app:cardCornerRadius="@dimen/list_item_local_media_radius"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -29,23 +28,23 @@
 
     <LinearLayout
         android:id="@+id/video_duration"
-        android:layout_width="35dp"
-        android:layout_height="15dp"
-        android:layout_marginStart="5dp"
-        android:layout_marginBottom="5dp"
+        android:layout_width="@dimen/video_duration_width"
+        android:layout_height="@dimen/video_duration_height"
+        android:layout_marginStart="@dimen/video_duration_margin"
+        android:layout_marginBottom="@dimen/video_duration_margin"
         android:background="@color/gray"
-        android:elevation="16dp"
+        android:elevation="@dimen/video_duration_elevation"
         android:gravity="center"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintBottom_toBottomOf="@+id/card_view"
         app:layout_constraintStart_toStartOf="@id/card_view">
 
         <TextView
-            android:id="@+id/durationTextView"
+            android:id="@+id/duration_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/black"
-            android:textSize="8sp"
+            android:textSize="@dimen/video_duration_text_size"
             tools:text="00:15" />
     </LinearLayout>
 

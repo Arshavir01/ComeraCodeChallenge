@@ -26,6 +26,7 @@
             android:textColor="@color/white"
             android:gravity="center"
             android:layout_weight="1"
+            android:background="@drawable/bar_ripple"
             android:text="@string/all"/>
 
         <View
@@ -38,9 +39,10 @@
             android:id="@+id/video"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="@color/unselected"
             android:gravity="center"
             android:layout_weight="1"
+            android:background="@drawable/bar_ripple"
             android:text="@string/videos"/>
 
         <View
@@ -53,9 +55,10 @@
             android:id="@+id/photo"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="@color/unselected"
             android:gravity="center"
             android:layout_weight="1"
+            android:background="@drawable/bar_ripple"
             android:text="@string/photos"/>
 
         <View
@@ -68,12 +71,27 @@
             android:id="@+id/folders"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textColor="@color/white"
+            android:textColor="@color/unselected"
             android:gravity="center"
             android:layout_weight="1"
+            android:background="@drawable/bar_ripple"
             android:text="@string/folders"/>
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/folder_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:text="@string/all"
+        android:background="@color/white"
+        android:textColor="@color/black"
+        android:padding="@dimen/folder_name_padding"
+        android:gravity="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/filter_bar"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/media_list_rv"
@@ -84,20 +102,7 @@
         android:clipToPadding="false"
         android:layout_marginHorizontal="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/filter_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"/>
-
-    <TextView
-        android:id="@+id/media_list_indicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/white"
-        android:text="No media title"
-        android:visibility="gone"
-        app:layout_constraintVertical_bias="0.45"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/filter_bar"
+        app:layout_constraintTop_toBottomOf="@+id/folder_name"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"/>
 
@@ -119,6 +124,23 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/permission_denied"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:text="@string/permission_denied"
+        android:textColor="@color/black"
+        android:padding="@dimen/folder_name_padding"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

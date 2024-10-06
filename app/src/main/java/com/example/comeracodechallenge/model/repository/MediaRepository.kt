@@ -117,6 +117,10 @@ class MediaRepository(private val context: Context) {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }
 
+    fun getAllMediaWithFolders(): List<Folder> {
+        return mediaFolders ?: emptyList()
+    }
+
     private suspend fun getDataFromCursor(
         cursor: Cursor,
     ): List<LocalMedia> =
@@ -261,6 +265,11 @@ class MediaRepository(private val context: Context) {
     fun getAllMediaFromFolders(): List<LocalMedia> {
         val allMedia = mediaFolders?.flatMap { it.folderItemList }
         return allMedia?.distinct() ?: emptyList()
+    }
+
+    fun getMediaForFolderId(folderId: Int): List<LocalMedia> {
+        val selectedFolderItems = getAllMediaWithFolders().firstOrNull { it.id == folderId }
+        return selectedFolderItems?.folderItemList ?: emptyList()
     }
 
     private fun createFirstFolder(mList: List<LocalMedia>): Folder? {

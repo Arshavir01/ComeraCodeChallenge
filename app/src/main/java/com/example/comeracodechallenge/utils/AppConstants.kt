@@ -7,4 +7,6 @@ object AppConstants {
     const val FOLDER_ID_ALL = -3
     const val FAVORITE_TITLE = "Favorite"
     const val ALL_TITLE = "All"
+    const val NO_FOLDER_ID = -1001
+    const val TAG_FOLDERS_FRAGMENT = "media_folders_fragment"
 }

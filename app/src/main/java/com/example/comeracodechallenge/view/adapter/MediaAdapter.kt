@@ -16,7 +16,7 @@ import com.example.comeracodechallenge.utils.MediaType
 import com.example.comeracodechallenge.utils.UtilMethods
 import kotlin.math.roundToInt
 
-class MediaAdapter : ListAdapter<LocalMedia, MediaAdapter.MediaViewHolder>(MediaListItemDiffer()) {
+class MediaAdapter : ListAdapter<LocalMedia, MediaAdapter.MediaViewHolder>(ListItemDiffer()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
         val binding =
@@ -61,7 +61,7 @@ class MediaAdapter : ListAdapter<LocalMedia, MediaAdapter.MediaViewHolder>(Media
 
     inner class MediaViewHolder(val binding: ListItemLocalMediaBinding): RecyclerView.ViewHolder(binding.root)
 
-    class MediaListItemDiffer : DiffUtil.ItemCallback<LocalMedia>() {
+    class ListItemDiffer : DiffUtil.ItemCallback<LocalMedia>() {
         override fun areItemsTheSame(oldItem: LocalMedia, newItem: LocalMedia): Boolean {
             return oldItem.uri == newItem.uri
         }

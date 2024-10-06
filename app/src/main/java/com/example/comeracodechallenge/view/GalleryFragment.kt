@@ -7,7 +7,9 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -16,18 +18,23 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
+import com.example.comeracodechallenge.R
 import com.example.comeracodechallenge.databinding.FragmentGalleryBinding
+import com.example.comeracodechallenge.utils.AppConstants.TAG_FOLDERS_FRAGMENT
+import com.example.comeracodechallenge.utils.Filter
+import com.example.comeracodechallenge.utils.Status
 import com.example.comeracodechallenge.utils.UtilMethods.hasMediaPermission
+import com.example.comeracodechallenge.utils.shouldShowMediaPermissionRationale
 import com.example.comeracodechallenge.view.adapter.MediaAdapter
 import com.example.comeracodechallenge.viewmodel.MediaViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class GalleryFragment: Fragment() {
     private lateinit var binding: FragmentGalleryBinding
     private lateinit var mediaAdapter: MediaAdapter
-    private val viewModel by viewModel<MediaViewModel>()
+    private val viewModel: MediaViewModel by activityViewModel()
     private var isFirstLoad = true
 
     override fun onCreateView(
@@ -43,6 +50,7 @@ class GalleryFragment: Fragment() {
         super.onViewCreated(view, savedInstanceState)
         checkMediaPermission()
         setMediaRecyclerView()
+        initButtons()
         bindView()
     }
 
@@ -51,15 +59,28 @@ class GalleryFragment: Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED){
                 viewModel.viewState.collectLatest { viewState ->
                     val list = viewState.media
+                    val status = viewState.loadingStatus
+                    setLoadingStatus(status)
                     if (list.isNotEmpty()){
                         mediaAdapter.submitList(list)
                         if (isFirstLoad) {
                             isFirstLoad = false
                             initScrollListener()
                         }
+                        setFilterButtonsSelection(viewState.filter)
                     }
+                    val name = viewModel.getFolderNameFromId()
+                    binding.folderName.text = name
                 }
             }
+        }
+    }
+
+    private fun setLoadingStatus(status: Status){
+        when(status){
+            is Status.Error -> Log.d("TAG", "error: ${status.msg}")
+            Status.Loading -> binding.progressBar.isVisible = true
+            else -> binding.progressBar.isVisible = false
         }
     }
 
@@ -70,13 +91,56 @@ class GalleryFragment: Fragment() {
         binding.mediaListRv.adapter = mediaAdapter
     }
 
+    private fun initButtons() {
+        binding.all.setOnClickListener { viewModel.onFilterChanged(Filter.All) }
+
+        binding.video.setOnClickListener { viewModel.onFilterChanged(Filter.Video) }
+
+        binding.photo.setOnClickListener { viewModel.onFilterChanged(Filter.Photo) }
+
+        binding.folders.setOnClickListener {
+            viewModel.onFilterChanged(Filter.Folder)
+            showFragmentFolder()
+        }
+    }
+
     private fun checkMediaPermission() {
         if (hasMediaPermission(requireContext())) {
             viewModel.onPermissionGranted()
         } else {
-            requestForImageVideoPermissions()
-            //put here text permission denied
+            val shouldShowRationale = shouldShowMediaPermissionRationale(requireActivity())
+            if (!shouldShowRationale) {
+                requestForImageVideoPermissions()
+            } else {
+               binding.permissionDenied.isVisible = true
+            }
         }
+    }
+
+    private fun setFilterButtonsSelection(filter: Filter) {
+        when (filter) {
+            Filter.All -> selectAnyButton(binding.all)
+            Filter.Video -> selectAnyButton(binding.video)
+            Filter.Photo -> selectAnyButton(binding.photo)
+            Filter.Folder -> selectAnyButton(binding.folders)
+        }
+    }
+
+    private fun selectAnyButton(button: TextView) {
+        binding.all.setTextColor(resources.getColor(R.color.unselected, null))
+        binding.video.setTextColor(resources.getColor(R.color.unselected, null))
+        binding.photo.setTextColor(resources.getColor(R.color.unselected, null))
+        binding.folders.setTextColor(resources.getColor(R.color.unselected, null))
+        button.setTextColor(resources.getColor(R.color.white, null))
+    }
+
+    private fun showFragmentFolder() {
+        val childFragment = MediaFolderFragment()
+        childFragmentManager.beginTransaction()
+            .replace(R.id.folder_fragment_container, childFragment, TAG_FOLDERS_FRAGMENT)
+            .addToBackStack(null)
+            .commit()
+
     }
 
     private fun initScrollListener() {

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="folder_text_size">11sp</dimen>
+    <dimen name="card_view_text_margin">4dp</dimen>
+    <dimen name="label_size">26sp</dimen>
+    <dimen name="label_margin_top">10dp</dimen>
+    <dimen name="rv_horizontal_padding">4dp</dimen>
+    <dimen name="folder_height">110dp</dimen>
+    <dimen name="folder_item_padding">4dp</dimen>
+    <dimen name="folder_info_tab_height">20dp</dimen>
+    <dimen name="folder_name_padding">4dp</dimen>
+    <dimen name="list_item_local_media_bottom_margin">12dp</dimen>
+    <dimen name="list_item_local_media_radius">4dp</dimen>
+    <dimen name="video_duration_width">38dp</dimen>
+    <dimen name="video_duration_height">15dp</dimen>
+    <dimen name="video_duration_margin">5dp</dimen>
+    <dimen name="video_duration_elevation">16dp</dimen>
+    <dimen name="video_duration_text_size">8sp</dimen>
+</resources>
