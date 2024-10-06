@@ -20,3 +20,6 @@ Once scrolling stops, the system identifies the first and last visible item posi
 It then initiates thumbnail generation for items within this range, adding them to a processing queue. 
 If a user quickly resumes scrolling before the thumbnail generation is complete, the system continues to generate and queue thumbnails for the items currently in view.
 Using this system we can achieve very smooth scrolling media list.
+
+![photo_2024-10-06_19-43-17](https://github.com/user-attachments/assets/45d41a25-6508-445c-88c7-af16e25b130e)
+![photo_2024-10-06_19-43-48](https://github.com/user-attachments/assets/4c35eadc-e654-472e-89b6-67793badf0b9)
