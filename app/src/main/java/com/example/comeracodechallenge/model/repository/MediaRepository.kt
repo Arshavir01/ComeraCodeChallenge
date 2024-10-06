@@ -282,16 +282,15 @@ class MediaRepository(private val context: Context) {
 
     private fun createFavoriteFolder(mList: List<LocalMedia>): Folder? {
         val favorite = mList.filter { it.hasFavorite }
-
-        if (favorite.isNotEmpty()) {
-            return Folder(
+        return if (favorite.isNotEmpty()) {
+            Folder(
                 FAVORITE_ID,
                 FAVORITE_TITLE,
                 favorite.size,
                 favorite,
             )
         } else {
-            return null
+            null
         }
     }
 

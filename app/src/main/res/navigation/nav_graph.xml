@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/galleryFragment">
+
+    <fragment
+        android:id="@+id/galleryFragment"
+        android:name="com.example.comeracodechallenge.view.GalleryFragment"
+        android:label="GalleryFragment" >
+        <action
+            android:id="@+id/action_galleryFragment_to_mediaFolderFragment2"
+            app:destination="@id/mediaFolderFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/mediaFolderFragment"
+        android:name="com.example.comeracodechallenge.view.MediaFolderFragment"
+        android:label="MediaFolderFragment" >
+    </fragment>
+</navigation>

@@ -14,13 +14,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.example.comeracodechallenge.R
 import com.example.comeracodechallenge.databinding.FragmentGalleryBinding
-import com.example.comeracodechallenge.utils.AppConstants.TAG_FOLDERS_FRAGMENT
 import com.example.comeracodechallenge.utils.Filter
 import com.example.comeracodechallenge.utils.Status
 import com.example.comeracodechallenge.utils.UtilMethods.hasMediaPermission
@@ -36,6 +37,7 @@ class GalleryFragment: Fragment() {
     private lateinit var mediaAdapter: MediaAdapter
     private val viewModel: MediaViewModel by activityViewModel()
     private var isFirstLoad = true
+    private lateinit var navController: NavController
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -48,6 +50,7 @@ class GalleryFragment: Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        navController = findNavController()
         checkMediaPermission()
         setMediaRecyclerView()
         initButtons()
@@ -135,12 +138,7 @@ class GalleryFragment: Fragment() {
     }
 
     private fun showFragmentFolder() {
-        val childFragment = MediaFolderFragment()
-        childFragmentManager.beginTransaction()
-            .replace(R.id.folder_fragment_container, childFragment, TAG_FOLDERS_FRAGMENT)
-            .addToBackStack(null)
-            .commit()
-
+        navController.navigate(R.id.action_galleryFragment_to_mediaFolderFragment2)
     }
 
     private fun initScrollListener() {

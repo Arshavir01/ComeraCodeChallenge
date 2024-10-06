@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.example.comeracodechallenge.model.entities.Folder
 import com.example.comeracodechallenge.model.entities.LocalMedia
 import com.example.comeracodechallenge.model.repository.MediaRepository
@@ -28,8 +26,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.ArrayDeque
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 class MediaViewModel(
     private val repo: MediaRepository,
