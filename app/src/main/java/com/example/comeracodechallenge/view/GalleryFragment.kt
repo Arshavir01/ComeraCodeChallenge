@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -38,6 +39,7 @@ class GalleryFragment: Fragment() {
     private val viewModel: MediaViewModel by activityViewModel()
     private var isFirstLoad = true
     private lateinit var navController: NavController
+    private lateinit var scrollListener: OnScrollListener
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -130,11 +132,11 @@ class GalleryFragment: Fragment() {
     }
 
     private fun selectAnyButton(button: TextView) {
-        binding.all.setTextColor(resources.getColor(R.color.unselected, null))
-        binding.video.setTextColor(resources.getColor(R.color.unselected, null))
-        binding.photo.setTextColor(resources.getColor(R.color.unselected, null))
-        binding.folders.setTextColor(resources.getColor(R.color.unselected, null))
-        button.setTextColor(resources.getColor(R.color.white, null))
+        binding.all.setTextColor(ContextCompat.getColor(requireContext(), R.color.unselected))
+        binding.video.setTextColor(ContextCompat.getColor(requireContext(), R.color.unselected))
+        binding.photo.setTextColor(ContextCompat.getColor(requireContext(), R.color.unselected))
+        binding.folders.setTextColor(ContextCompat.getColor(requireContext(), R.color.unselected))
+        button.setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
     }
 
     private fun showFragmentFolder() {
@@ -144,8 +146,7 @@ class GalleryFragment: Fragment() {
     private fun initScrollListener() {
         binding.mediaListRv.clearOnScrollListeners()
 
-        binding.mediaListRv.addOnScrollListener(
-            object : OnScrollListener() {
+          scrollListener = object : OnScrollListener() {
                 var firstItemPosition = -1
                 var lastItemPosition = -1
                 val linearLayoutManager = binding.mediaListRv.layoutManager as LinearLayoutManager?
@@ -168,8 +169,9 @@ class GalleryFragment: Fragment() {
                         viewModel.onScrollPositionChanged(firstItemPosition, lastItemPosition, requireContext())
                     }
                 }
-            },
-        )
+            }
+
+        binding.mediaListRv.addOnScrollListener(scrollListener)
     }
 
 
@@ -204,5 +206,10 @@ class GalleryFragment: Fragment() {
                 viewModel.onPermissionGranted()
             }
         }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        binding.mediaListRv.removeOnScrollListener(scrollListener)
+    }
 
 }

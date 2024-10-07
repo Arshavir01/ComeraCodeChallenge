@@ -11,11 +11,6 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 object UtilMethods {
-    val Int.dpAsPx
-        get() = (this * Resources.getSystem().displayMetrics.density).toInt()
-
-    val Int.pxAsDp
-        get() = (this / Resources.getSystem().displayMetrics.density).toInt()
 
     fun convertSecondsToHour(millis: Int): String {
         val duration = millis.toDuration(DurationUnit.MILLISECONDS)

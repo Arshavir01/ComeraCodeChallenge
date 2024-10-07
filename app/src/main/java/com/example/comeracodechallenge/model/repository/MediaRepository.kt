@@ -15,6 +15,7 @@ import com.example.comeracodechallenge.utils.AppConstants.ALL_TITLE
 import com.example.comeracodechallenge.utils.AppConstants.FAVORITE_ID
 import com.example.comeracodechallenge.utils.AppConstants.FAVORITE_TITLE
 import com.example.comeracodechallenge.utils.AppConstants.FOLDER_ID_ALL
+import com.example.comeracodechallenge.utils.AppConstants.NO_ID
 import com.example.comeracodechallenge.utils.MediaType
 import com.example.comeracodechallenge.utils.Status
 import com.example.comeracodechallenge.utils.UtilMethods
@@ -44,11 +45,14 @@ class MediaRepository(private val context: Context) {
                     return@withContext mediaList.distinctBy { it.id }
                 }
 
+                var cursorImages: Cursor? = null
+                var cursorVideos: Cursor? = null
+
                 try {
                     _loadingStatus.emit(Status.Loading)
                     val columns = getColumns()
 
-                    val cursorImages =
+                     cursorImages =
                         context.contentResolver.query(
                             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                             columns,
@@ -57,7 +61,7 @@ class MediaRepository(private val context: Context) {
                             MediaStore.Images.Media.DATE_ADDED,
                         )
 
-                    val cursorVideos =
+                     cursorVideos =
                         context.contentResolver.query(
                             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                             columns,
@@ -66,13 +70,13 @@ class MediaRepository(private val context: Context) {
                             MediaStore.Video.Media.DATE_ADDED,
                         )
 
-                    val mergeCursor =
-                        MergeCursor(
-                            arrayOf(
-                                cursorImages,
-                                cursorVideos,
-                            ),
-                        )
+                    if (cursorImages == null && cursorVideos == null) {
+                        _loadingStatus.emit(Status.Error("No media found"))
+                        return@withContext emptyList()
+                    }
+
+                    val validCursors = listOfNotNull(cursorImages, cursorVideos).toTypedArray()
+                    val mergeCursor = MergeCursor(validCursors)
 
                     mergeCursor.moveToLast()
                     val mediaList = getDataFromCursor(mergeCursor)
@@ -86,6 +90,9 @@ class MediaRepository(private val context: Context) {
                     _loadingStatus.emit(Status.Success)
                 } catch (e: Exception) {
                     _loadingStatus.emit(Status.Error(e.message ?: "Error"))
+                }finally {
+                    cursorImages?.closeQuietly()
+                    cursorVideos?.closeQuietly()
                 }
             }
 
@@ -153,20 +160,20 @@ class MediaRepository(private val context: Context) {
                     continue
                 }
 
-                val path = cursor.getString(pathColumnIndex)
-                val id: Long = cursor.getLong(idColumnIndex)
-                val folderName: String = cursor.getString(folderNameColumnIndex)
-                val mediaName = cursor.getString(fileNameColumnIndex)
-                val mediaSize = cursor.getInt(fileSizeColumnIndex)
+                val path = cursor.getString(pathColumnIndex) ?: ""
+                val id: Long = cursor.getLong(idColumnIndex) ?: -1L
+                val folderName: String = cursor.getString(folderNameColumnIndex) ?: "Unknown"
+                val mediaName = cursor.getString(fileNameColumnIndex) ?: "Unnamed"
+                val mediaSize = cursor.getInt(fileSizeColumnIndex) ?: 0
                 var isFavorite = false
                 if (favoriteColumnIndex != -1) {
                     isFavorite = isFavorite(cursor, favoriteColumnIndex)
                 }
                 var duration: Int? = null
                 if (durationColumnIndex != -1) {
-                    duration = getDuration(cursor, durationColumnIndex)
+                    duration = getDuration(cursor, durationColumnIndex) ?: 0
                 }
-                val dateAdded = cursor.getLong(dateAddedColumnIndex)
+                val dateAdded = cursor.getLong(dateAddedColumnIndex) ?: 0L
 
                 val mediaType =
                     if (UtilMethods.isVideoFile(path)) {

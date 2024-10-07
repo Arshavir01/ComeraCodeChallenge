@@ -7,7 +7,7 @@ import org.koin.dsl.module
 
 val appModule = module{
     viewModel {
-        MediaViewModel(repo = get(), context = get())
+        MediaViewModel(repo = get(), application = get())
     }
 
     single {

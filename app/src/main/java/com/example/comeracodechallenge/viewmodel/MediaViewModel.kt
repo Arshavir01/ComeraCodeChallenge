@@ -1,8 +1,9 @@
 package com.example.comeracodechallenge.viewmodel
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.comeracodechallenge.model.entities.Folder
 import com.example.comeracodechallenge.model.entities.LocalMedia
@@ -25,12 +26,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.util.ArrayDeque
 
 class MediaViewModel(
     private val repo: MediaRepository,
-    context: Context
-) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
 
     private val permissionGranted = MutableStateFlow(false)
     private val mediaFlow = MutableStateFlow<List<LocalMedia>>(emptyList())
@@ -48,7 +50,7 @@ class MediaViewModel(
                     repo.loadingStatus,
                     currentFilter
                 ) { media, status, filter ->
-                    setAlreadyGeneratedThumbs(context, media)
+                    setAlreadyGeneratedThumbs(media)
                     val filterMediaList = filterMediaList(media, filter)
                     return@combine ViewState(filterMediaList, status, filter)
                 }
@@ -70,9 +72,9 @@ class MediaViewModel(
         permissionGranted.value = true
     }
 
-    private fun setAlreadyGeneratedThumbs(context: Context, list: List<LocalMedia>) {
+    private fun setAlreadyGeneratedThumbs(list: List<LocalMedia>) {
         list.forEach {
-            val outputPath = getOutputPathFromId(it.id, context)
+            val outputPath = getOutputPathFromId(it.id)
             val outputPathFile = File(outputPath)
             if (outputPathFile.exists()) {
                 addVideoThumbsToList(videoThumbnail = outputPath, id = it.id)
@@ -99,13 +101,14 @@ class MediaViewModel(
         return newMediaList
     }
 
-    private fun getOutputPathFromId(id: Long, context: Context): String {
-        val parentDir = getParentDir(context)
+    private fun getOutputPathFromId(id: Long): String {
+        val parentDir = getParentDir()
         return parentDir + "video_thumb_$id.jpg"
     }
 
-    private fun getParentDir(context: Context): String {
-        return context.cacheDir.path + "/" + "thumbnails/"
+    private fun getParentDir(): String {
+        val appContext = getApplication<Application>().applicationContext
+        return appContext.cacheDir.path + "/" + "thumbnails/"
     }
 
     fun getAllFolderWithData(): List<Folder> {
@@ -175,20 +178,27 @@ class MediaViewModel(
         uri: Uri,
     ): String =
         withContext(Dispatchers.IO) {
-            val parentDir = getParentDir(context)
-            val parentDirFile = File(parentDir)
+            try {
+                val parentDir = getParentDir()
+                val parentDirFile = File(parentDir)
 
-            if (!parentDirFile.exists()) {
-                parentDirFile.mkdirs()
+                if (!parentDirFile.exists()) {
+                    parentDirFile.mkdirs()
+                }
+
+                val outputPath = getOutputPathFromId(id)
+                val outputPathFile = File(outputPath)
+
+                if (outputPathFile.exists()) {
+                    return@withContext outputPath
+                }
+
+                return@withContext outputPath // Return the final output path
+
+            } catch (e: IOException) {
+                e.printStackTrace()
+                throw e
             }
-            val outputPath = getOutputPathFromId(id, context)
-            val outputPathFile = File(outputPath)
-
-            if (outputPathFile.exists()) {
-                return@withContext outputPath
-            }
-
-            return@withContext outputPath
         }
 
     fun onFilterChanged(filter: Filter) {
