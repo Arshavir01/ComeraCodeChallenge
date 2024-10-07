@@ -59,23 +59,22 @@ class GalleryFragment: Fragment() {
         bindView()
     }
 
-    private fun bindView(){
+    private fun bindView() {
         lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED){
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.viewState.collectLatest { viewState ->
                     val list = viewState.media
                     val status = viewState.loadingStatus
                     setLoadingStatus(status)
-                    if (list.isNotEmpty()){
-                        mediaAdapter.submitList(list)
-                        if (isFirstLoad) {
-                            isFirstLoad = false
-                            initScrollListener()
-                        }
-                        setFilterButtonsSelection(viewState.filter)
+                    mediaAdapter.submitList(list)
+                    if (isFirstLoad) {
+                        isFirstLoad = false
+                        initScrollListener()
                     }
+                    setFilterButtonsSelection(viewState.filter)
                     val name = viewModel.getFolderNameFromId()
                     binding.folderName.text = name
+                    binding.noMedia.isVisible = list.isEmpty()
                 }
             }
         }

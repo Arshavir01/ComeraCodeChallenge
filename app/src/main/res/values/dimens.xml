@@ -16,4 +16,5 @@
     <dimen name="video_duration_margin">5dp</dimen>
     <dimen name="video_duration_elevation">16dp</dimen>
     <dimen name="video_duration_text_size">8sp</dimen>
+    <dimen name="no_media_text_size">18sp</dimen>
 </resources>

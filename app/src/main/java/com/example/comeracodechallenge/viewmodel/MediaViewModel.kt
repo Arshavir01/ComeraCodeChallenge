@@ -146,7 +146,7 @@ class MediaViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 while (thumbGenerationQueue.isNotEmpty()) {
                     val item = thumbGenerationQueue.peekLast()!!
-                    val thumbnail = generateThumbnail(context, item.id, item.uri!!)
+                    val thumbnail = generateThumbnail(item.id, item.uri!!)
                     addVideoThumbsToList(thumbnail, item.id)
                     thumbGenerationQueue.removeLast()
                 }
@@ -173,7 +173,6 @@ class MediaViewModel(
     }
 
     private suspend fun generateThumbnail(
-        context: Context,
         id: Long,
         uri: Uri,
     ): String =
@@ -214,7 +213,7 @@ class MediaViewModel(
                     .filter { it.mediaType == MediaType.Video }
                     .forEachIndexed { index, item ->
                         if (index <= lastVisiblePos) {
-                            val thumbnail = generateThumbnail(context, item.id, item.uri!!)
+                            val thumbnail = generateThumbnail(item.id, item.uri!!)
                             addVideoThumbsToList(thumbnail, item.id)
                         } else {
                             return@launch
