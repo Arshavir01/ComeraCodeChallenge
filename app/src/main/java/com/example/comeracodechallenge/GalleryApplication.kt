@@ -1,7 +1,8 @@
 package com.example.comeracodechallenge
 
 import android.app.Application
-import com.example.comeracodechallenge.di.appModule
+import com.example.comeracodechallenge.di.repositoryModule
+import com.example.comeracodechallenge.di.viewModelModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -14,7 +15,7 @@ class GalleryApplication: Application() {
         startKoin {
             androidLogger(Level.ERROR)
             androidContext(this@GalleryApplication)
-            modules(appModule)
+            modules(viewModelModule, repositoryModule)
         }
     }
 }
